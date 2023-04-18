@@ -126,7 +126,7 @@ void print_sym_link_info(char* filename)
     struct stat st;
     char options[MAX_OPTIONS];
     int ok=1;
-    if (lstat(filename, &st) == -1) 
+    if (lstat(filename, &st) == -1)
     {
         perror("lstat");
         return;

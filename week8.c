@@ -40,41 +40,101 @@ int main(int argc, char* argv[])
                 pid_t pid_reg = fork();
                 if (pid_reg < 0)
                 {
-                    //error had=ndeling
+                    perror("there is no process created");
+                    exit(5);
                 }
                 else if( pid_reg == 0)
                 {
                     // here we should create the code for the child process 
-                    //adding also the script case
+                    print_reg_file_info(filename);
+                    exit(0);
                 }
                 else
                 {
                     // code executed by the parent
                     // i asuume that we should wait the process reg to end
+                    if(filename[strlen(filename)-1]=='c' && filename[strlen(filename)-2]=='.')
+                    {
+                        pid_t pid_script = fork();
+                        if (pid_script < 0 )
+                        {
+                            perror("there is no process created");
+                            exit(5);
+                        }
+                        else if ( pid_script == 0)
+                        {
+                            // here we should call the script
+                            execlp("gcc", "gcc", "-Wall", filename, NULL);
+                            exit(0);
+                        }
+                        else
+                        {
+                            // parent process 
+                            // should use wait
+                        }
+                    
+                    }
+                }
+
+                break;
+
+
+            case S_IFLNK:
+                // probably things should be changed here too
+                printf("%s: directory\n", filename);
+                pid_t pid_link = fork();
+                if (pid_link < 0)
+                {
+                    perror("there is no process created");
+                    exit(5);
+                }
+                else if ( pid_link == 0)
+                {
+                    // we are in the child process
+                    print_sym_link_info(filename);
+                    exit(0);
+                }
+                else
+                {
+                    //
                 }
                 break;
-            case S_IFLNK:
-                printf("%s: this is a symbolic link\n", filename);
-                print_sym_link_info(filename);
-                break;
+
+
             case S_IFDIR:
                 // here should be implemented the process part for directories
-                 printf("%s: directory\n", filename);
+                printf("%s: directory\n", filename);
                 pid_t pid_dir = fork();
-                if (piddir < 0)
+                if (pid_dir < 0)
                 {
-                    // error again
+                    perror("there is no process created");
+                    exit(5);
                 }
                 else if ( pid_dir == 0)
                 {
                     // we are in the child process
-                    // probably just call the function dir_info
+                    print_dir_info(filename);
+                    exit(0);
                 }
                 else
                 {
                     // we are in the parent process
                     // again i guess we should just wait
-                    
+                    pid_t pid_create = fork();
+                    if (pid_create < 0 )
+                    {
+                        perror("there is no process created");
+                        exit(5);
+                    }
+                    else if ( pid_create == 0)
+                    {
+                        execlp( "touch", "touch", filename, NULL); 
+                    }
+                    else
+                    {
+                        // process
+                    }
+
                 }
 
                 break;

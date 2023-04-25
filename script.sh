@@ -21,5 +21,5 @@ then
     echo "Number of errors $errors"
     echo "Number of warnings $warnings"
 else
-    echo "OK"
+    echo "No errors or warnings!"
 fi

@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <time.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 
 #define MAX_OPTIONS 10
@@ -41,43 +43,59 @@ int main(int argc, char* argv[])
                 if (pid_reg < 0)
                 {
                     perror("there is no process created");
-                    exit(5);
+                    exit(999);
                 }
                 else if( pid_reg == 0)
                 {
                     // here we should create the code for the child process 
                     print_reg_file_info(filename);
-                    exit(0);
+                    exit(11);
                 }
                 else
                 {
                     // code executed by the parent
-                    // i asuume that we should wait the process reg to end
                     if(filename[strlen(filename)-1]=='c' && filename[strlen(filename)-2]=='.')
                     {
                         pid_t pid_script = fork();
                         if (pid_script < 0 )
                         {
                             perror("there is no process created");
-                            exit(5);
+                            exit(999);
                         }
                         else if ( pid_script == 0)
                         {
-                            // here we should call the script
-                            execlp("gcc", "gcc", "-Wall", filename, NULL);
-                            exit(0);
+                            // here we should call the script and run it 
+                            execlp("/bin/bash", "/bin/bash", "/mnt/c/Users/triss/Desktop/os_project/script.sh", "arg1", NULL);
+                            perror("Failed to execute script");
+                            exit(12);
+                            
                         }
-                        else
+                    else
+                    {
+                                // parent process
+                                // should use wait
+                        pid_t wpid;
+                        int status;
+                        while ((wpid = wait(&status)) > 0)
                         {
-                            // parent process 
-                            // should use wait
+                            if (wpid == pid_script || wpid == pid_reg)
+                            {
+                                if (WIFEXITED(status))
+                                {
+                                    printf("\n");
+                                    printf("Child process with PID %d exited with status %d\n", wpid, WEXITSTATUS(status));
+                                }
+                                else
+                                    {
+                                        printf("\n");
+                                        printf("Child process  with PID %d did not exit normally\n", wpid);
+                                    }
+                            }
                         }
-                    
                     }
                 }
-
-                break;
-
+            }
+            break;
 
             case S_IFLNK:
                 // probably things should be changed here too
@@ -86,17 +104,28 @@ int main(int argc, char* argv[])
                 if (pid_link < 0)
                 {
                     perror("there is no process created");
-                    exit(5);
+                    exit(999);
                 }
                 else if ( pid_link == 0)
                 {
                     // we are in the child process
                     print_sym_link_info(filename);
-                    exit(0);
+                    exit(22);
                 }
                 else
                 {
-                    //
+                    int status;
+                    waitpid(pid_link, &status, 0);
+                    if (WIFEXITED(status)) 
+                    {
+                        printf("\n");
+                        printf("Child process exited with status %d\n", WEXITSTATUS(status));
+                    } 
+                    else 
+                        {
+                            printf("\n");
+                            printf("Child process did not exit normally\n");
+                        }
                 }
                 break;
 
@@ -108,13 +137,13 @@ int main(int argc, char* argv[])
                 if (pid_dir < 0)
                 {
                     perror("there is no process created");
-                    exit(5);
+                    exit(999);
                 }
                 else if ( pid_dir == 0)
                 {
                     // we are in the child process
                     print_dir_info(filename);
-                    exit(0);
+                    exit(33);
                 }
                 else
                 {
@@ -124,15 +153,39 @@ int main(int argc, char* argv[])
                     if (pid_create < 0 )
                     {
                         perror("there is no process created");
-                        exit(5);
+                        exit(999);
                     }
                     else if ( pid_create == 0)
                     {
-                        execlp( "touch", "touch", filename, NULL); 
+                        //execlp("touch", "touch", "/path/to/directory/newfile.txt", NULL);-
+                        //execlp("touch", "touch", "/mnt/c/Users/triss/Desktop/os_project/dir1/new_file.c", NULL);
+                        char *cmd = "touch";
+                        char filename[strlen(argv[1]) + 11];
+                        sprintf(filename, "%s/%s_file.txt", argv[1], argv[1]);
+                        execlp(cmd, cmd, filename, (char *) NULL);
+                        exit(31);
+                        //the process stops when i introduce the option -c
                     }
                     else
                     {
-                        // process
+                        pid_t wpid;
+                                int status;
+                                while ((wpid = wait(&status)) > 0)
+                                {
+                                    if (wpid == pid_dir || wpid == pid_create)
+                                    {
+                                        if (WIFEXITED(status))
+                                        {
+                                            printf("\n");
+                                            printf("Child process with PID %d exited with status %d\n", wpid, WEXITSTATUS(status));
+                                        }
+                                        else
+                                            {
+                                                printf("\n");
+                                                printf("Child process with PID %d did not exit normally\n", wpid);
+                                            }
+                                    }
+                                }
                     }
 
                 }
@@ -160,6 +213,7 @@ void print_reg_file_info(char* filename)
     }
 
     printf("Options: name(-n) , size(-d), hard link count(-h), time of last modification(-m), access rights(-a), create symbolic link(-l): ");
+    printf("\n");
     scanf("%s", options);
 
     for(int i=0;i<strlen(options); i++)

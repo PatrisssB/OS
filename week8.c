@@ -93,6 +93,8 @@ int main(int argc, char* argv[])
                                     printf("\n");
                                     printf("Child process  with PID %d did not exit normally\n", wpid);
                                 }
+
+                                
                         }
                     }
                 }

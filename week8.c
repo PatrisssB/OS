@@ -38,6 +38,7 @@ int main(int argc, char* argv[])
             case S_IFREG:
                 // here should be implemented the process part for regular files
                 printf("%s: regular file\n", filename);
+                int pid_count = 0;
                 //we fork the process to create a child process
                 pid_t pid_reg = fork();
                 if (pid_reg < 0)
@@ -47,6 +48,7 @@ int main(int argc, char* argv[])
                 }
                 else if( pid_reg == 0)
                 {
+                    pid_count ++;
                     // here we should create the code for the child process 
                     print_reg_file_info(filename);
                     exit(11);
@@ -56,6 +58,7 @@ int main(int argc, char* argv[])
                     // code executed by the parent
                     if(filename[strlen(filename)-1]=='c' && filename[strlen(filename)-2]=='.')
                     {
+                        
                         pid_t pid_script = fork();
                         if (pid_script < 0 )
                         {
@@ -64,6 +67,7 @@ int main(int argc, char* argv[])
                         }
                         else if ( pid_script == 0)
                         {
+                            pid_count++;
                             // here we should call the script and run it 
                             execlp("/bin/bash", "/bin/bash", "/mnt/c/Users/triss/Desktop/os_project/script.sh", "arg1", NULL);
                             perror("Failed to execute script");
@@ -72,25 +76,23 @@ int main(int argc, char* argv[])
                         }
                     else
                     {
-                                // parent process
-                                // should use wait
+                        // parent process       
+                        // should use wait
                         pid_t wpid;
                         int status;
-                        while ((wpid = wait(&status)) > 0)
+                        for( int i = 0; i < pid_count; i++)
                         {
-                            if (wpid == pid_script || wpid == pid_reg)
+                            wpid = wait(&status);
+                            if (WIFEXITED(status))
                             {
-                                if (WIFEXITED(status))
+                                printf("\n");
+                                printf("Child process with PID %d exited with status %d\n", wpid, WEXITSTATUS(status));
+                            }
+                            else
                                 {
                                     printf("\n");
-                                    printf("Child process with PID %d exited with status %d\n", wpid, WEXITSTATUS(status));
+                                    printf("Child process  with PID %d did not exit normally\n", wpid);
                                 }
-                                else
-                                    {
-                                        printf("\n");
-                                        printf("Child process  with PID %d did not exit normally\n", wpid);
-                                    }
-                            }
                         }
                     }
                 }

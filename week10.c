@@ -92,6 +92,18 @@ int main(int argc, char* argv[])
                         }
                     else
                     {
+                    /*pid_t pid_lines = fork();
+        if (pid_lines < 0) {
+            perror("there is no process created");
+            exit(999);
+        }
+        else if (pid_lines == 0) 
+        {
+            pid_count ++;
+            // code for child process
+            print_reg_file_info(filename);
+            exit(11);
+        }*/
                         // parent process       
                         // should use wait
                         close(pipefd[1]); // close unused write end of the pipe
@@ -117,6 +129,7 @@ int main(int argc, char* argv[])
                                 {
                                     num_warnings++;
                                 }
+                                token = strtok(NULL, "\n");
                             }
                         printf("Code score for %s: %d errors, %d warnings\n", filename, num_errors, num_warnings);
                         token = NULL;

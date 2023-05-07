@@ -144,37 +144,154 @@ int main(int argc, char* argv[])
             }
             break;
 
+            /*case S_IFLNK:
+            // create a pipe for communication between parent and child processes
+            int pfd[2];
+            pipe( pfd);
+            if (pipe(pfd) == -1) 
+            {
+                perror("pipe");
+                exit(EXIT_FAILURE);
+            }
+
+            pid_t pid_link = fork();
+            if (pid_link == -1) 
+            {
+                perror("fork");
+                exit(EXIT_FAILURE);
+            }
+
+            else if (pid_link == 0) 
+            {
+            // we are in the child process
+                close(pfd[0]); // close unused read end of the pipe
+            // set the new permissions for the symbolic link
+                if (symlink(filename, "temp_link") == -1) 
+                {
+                    perror("symlink");
+                    exit(EXIT_FAILURE);
+                }
+                if (chmod("temp_link", S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP) == -1) 
+                {
+                    perror("chmod");
+                    exit(EXIT_FAILURE);
+                }
+                if (write(pfd[1], "success", 8) == -1) 
+                {
+                    perror("write");
+                    exit(EXIT_FAILURE);
+                }
+                close(pfd[1]); // close write end of the pipe
+                exit(EXIT_SUCCESS);
+            }
+            else 
+            {
+        int status;
+        waitpid(pid_link, &status, 0);
+        if (WIFEXITED(status)) {
+            // check if child process succeeded in changing the permissions of the symbolic link
+                char buf[8];
+                close(pfd[1]); // close unused write end of the pipe
+                if (read(pfd[0], buf, sizeof(buf)) == -1) 
+                {
+                    perror("read");
+                    exit(EXIT_FAILURE);
+                }
+                close(pfd[0]); // close read end of the pipe
+                if (strcmp(buf, "success") == 0) 
+                {
+                    printf("Changed permissions for %s\n", filename);
+                }
+                else 
+                {
+                    printf("Failed to change permissions for %s\n", filename);
+                }
+                printf("\n");
+                printf("Child process exited with status %d\n", WEXITSTATUS(status));
+            }
+            else 
+                {
+                    printf("\n");
+                    printf("Child process did not exit normally\n");
+                }
+            }
+            break; */
             case S_IFLNK:
-                // probably things should be changed here too
-                printf("%s: directory\n", filename);
-                pid_t pid_link = fork();
-                if (pid_link < 0)
-                {
-                    perror("there is no process created");
-                    exit(999);
-                }
-                else if ( pid_link == 0)
-                {
-                    // we are in the child process
-                    print_sym_link_info(filename);
-                    exit(22);
-                }
-                else
-                {
-                    int status;
-                    waitpid(pid_link, &status, 0);
-                    if (WIFEXITED(status)) 
-                    {
-                        printf("\n");
-                        printf("Child process exited with status %d\n", WEXITSTATUS(status));
-                    } 
-                    else 
-                        {
-                            printf("\n");
-                            printf("Child process did not exit normally\n");
-                        }
-                }
-                break;
+{
+    printf("%s: symbolic link\n", filename);
+    pid_t pid_link = fork();
+    if (pid_link < 0)
+    {
+        perror("there is no process created");
+        exit(999);
+    }
+    else if ( pid_link == 0)
+    {
+        // we are in the child process
+        close(STDOUT_FILENO); // close stdout
+        int fd[2];
+        if (pipe(fd) == -1)
+        {
+            perror("pipe");
+            exit(1);
+        }
+        pid_t pid_link2 = fork();
+        if (pid_link2 < 0)
+        {
+            perror("there is no process created");
+            exit(999);
+        }
+        else if (pid_link2 == 0)
+        {
+            // we are in the child process of the second fork
+            close(fd[0]); // close unused read end of the pipe
+            if (dup2(fd[1], STDOUT_FILENO) == -1)
+            {
+                perror("dup2");
+                exit(1);
+            }
+            close(fd[1]); // close write end of the pipe
+            execlp("chmod", "chmod", "u+rwx,g+rw,o-rwx", filename, NULL);
+            perror("Failed to execute chmod");
+            exit(22);
+        }
+        else
+        {
+            // we are in the first child process
+            close(fd[1]); // close unused write end of the pipe
+            int nbytes;
+            char buffer[BUFFER_SIZE];
+            while ((nbytes = read(fd[0], buffer, BUFFER_SIZE)) > 0)
+            {
+                write(STDOUT_FILENO, buffer, nbytes); // write output of second child to stdout
+            }
+            if (nbytes == -1)
+            {
+                perror("read");
+                exit(1);
+            }
+            close(fd[0]); // close read end of the pipe
+            exit(22);
+        }
+    }
+    else
+    {
+        // we are in the parent process
+        int status;
+        waitpid(pid_link, &status, 0);
+        if (WIFEXITED(status)) 
+        {
+            printf("\n");
+            printf("Child process exited with status %d\n", WEXITSTATUS(status));
+        } 
+        else 
+        {
+            printf("\n");
+            printf("Child process did not exit normally\n");
+        }
+    }
+    break;
+}
 
 
             case S_IFDIR:

@@ -185,8 +185,69 @@ int main(int argc, char* argv[])
         }
 
         case S_IFLNK:
-                printf("%s: this is a symbolic link\n", filename);
-                print_sym_link_info(filename);
+            // create a pipe for communication between parent and child processes
+            pid_t pid_link = fork();
+            int pfd[2];
+            if (pid_link == -1) 
+            {
+                perror("fork");
+                exit(EXIT_FAILURE);
+            }
+            else if (pid_link == 0) 
+            {
+            // we are in the child process
+                close(pfd[0]); // close unused read end of the pipe
+            // set the new permissions for the symbolic link
+                if (symlink(filename, "temp_link") == -1) 
+                {
+                    perror("symlink");
+                    exit(EXIT_FAILURE);
+                }
+                if (chmod("temp_link", S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IWGRP) == -1) 
+                {
+                    perror("chmod");
+                    exit(EXIT_FAILURE);
+                }
+                if (write(pfd[1], "success", 8) == -1) 
+                {
+                    perror("write");
+                    exit(EXIT_FAILURE);
+                }
+                close(pfd[1]); // close write end of the pipe
+                exit(EXIT_SUCCESS);
+            }
+            else 
+            {
+        int status;
+        waitpid(pid_link, &status, 0);
+        if (WIFEXITED(status)) {
+            // check if child process succeeded in changing the permissions of the symbolic link
+                char buf[8];
+                close(pfd[1]); // close unused write end of the pipe
+                if (read(pfd[0], buf, sizeof(buf)) == -1) 
+                {
+                    perror("read");
+                    exit(EXIT_FAILURE);
+                }
+                close(pfd[0]); // close read end of the pipe
+                if (strcmp(buf, "success") == 0) 
+                {
+                    printf("Changed permissions for %s\n", filename);
+                }
+                else 
+                {
+                    printf("Failed to change permissions for %s\n", filename);
+                }
+                printf("\n");
+                printf("Child process exited with status %d\n", WEXITSTATUS(status));
+            }
+            else 
+                {
+                    printf("\n");
+                    printf("Child process did not exit normally\n");
+                }
+            }
+            break;
         break;
 
         case S_IFDIR:

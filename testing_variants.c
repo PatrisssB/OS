@@ -186,14 +186,8 @@ int main(int argc, char* argv[])
 
         case S_IFLNK:
             // create a pipe for communication between parent and child processes
-            pid_t pid_link = fork();
-            int pfd[2];
-            if (pid_link == -1) 
-            {
-                perror("fork");
-                exit(EXIT_FAILURE);
-            }
-            else if (pid_link == 0) 
+            /*pid_t pid_link = fork();
+            if (pid_link == 0) 
             {
             // we are in the child process
                 close(pfd[0]); // close unused read end of the pipe
@@ -247,8 +241,8 @@ int main(int argc, char* argv[])
                     printf("Child process did not exit normally\n");
                 }
             }
-            break;
-        break;
+    
+        break;*/
 
         case S_IFDIR:
                 printf("Listing files in directory %s:\n", filename);

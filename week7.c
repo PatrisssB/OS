@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <time.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 
 #define MAX_OPTIONS 10
@@ -37,16 +39,74 @@ int main(int argc, char* argv[])
                 printf("%s: this is a this is a regular file\n", filename);
                 print_reg_file_info(filename);
                 break;
+
             case S_IFLNK:
-                printf("%s: this is a symbolic link\n", filename);
-                print_sym_link_info(filename);
-                break;
+            {
+                printf("%s: symbolic link:\n", filename);
+                pid_t pid_link = fork();
+                if (pid_link < 0)
+                {
+                    perror("there is no process created");
+                    exit(999);
+                }
+                else if ( pid_link == 0)
+                {
+                    // we are in the child process
+                    print_sym_link_info(filename);
+                    exit(22);
+                }
+                else
+                {
+                    pid_t pid_change = fork();
+                    if (pid_change < 0)
+                    {
+                        perror("there is no process created");
+                        exit(999);
+                    }
+
+                    if (pid_change == 0)
+                    {
+                        execlp("chmod", "chmod", "u=rwx,g=rw,o=", filename, NULL);
+                        printf("error regarding the chmod");
+                        exit(22);
+                    }
+                        int status1;
+                        waitpid(pid_link, &status1, 0);
+                        if (WIFEXITED(status1)) 
+                        {
+                            printf("\n");
+                            printf("Child process exited with status %d\n", WEXITSTATUS(status1));
+                        } 
+                        else 
+                        {
+                            printf("\n");
+                            printf("Child process did not exit normally\n");
+                        }
+
+                        
+                        int status;
+                        waitpid(pid_link, &status, 0);
+                        if (WIFEXITED(status)) 
+                        {
+                            printf("\n");
+                            printf("Child process exited with status %d\n", WEXITSTATUS(status));
+                        } 
+                        else 
+                        {
+                            printf("\n");
+                            printf("Child process did not exit normally\n");
+                        }
+
+                }
+            }
+            break;
+
             case S_IFDIR:
                 printf("%s: directory\n", filename);
                 print_dir_info(filename);
                 break;
             default:
-                printf("%s: thia is an unknown file type\n", filename);
+                printf("%s: this is an unknown file type\n", filename);
                 break;
         }
     }

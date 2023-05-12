@@ -73,14 +73,16 @@ int main(int argc, char* argv[])
                     perror("there is no process created");
                     exit(999); 
                 }
-                //try pid count here 
-                else if( pid_reg == 0) //change elif cu if 
+                //try pid count here
+                pid_count ++;
+                if( pid_reg == 0) 
                 {
-                    pid_count ++;
-                    // here we should create the code for the child process 
                     print_reg_file_info(filename);
-                    count_lines(filename);
-                    //here count_lines or exec
+                    int lines = count_lines(filename);
+                    if (lines >= 0) 
+                    {
+                        printf("File '%s' has %d lines\n", filename, lines);
+                    }
                     exit(11);
                 }
                 else
@@ -101,9 +103,10 @@ int main(int argc, char* argv[])
                             perror("there is no process created");
                             exit(999);
                         }
-                        else if ( pid_script == 0)
+                        pid_count++;
+                        if ( pid_script == 0)
                         {
-                            pid_count++;
+                            //pid_count++;
                             // here we should call the script and run it 
                             close(pipefd[0]); // close unused read end of the pipe
                             // make a verification for close pid
@@ -115,60 +118,15 @@ int main(int argc, char* argv[])
                                 exit(1);
                             }
                             //close(pipefd[1]); // close pipe write end
-                            // NO NEED TO CLOSE IF EXEC 
-                            execlp("/bin/bash", "/bin/bash", "/mnt/c/Users/triss/Desktop/os_project/script.sh", "arg1", NULL);
-                            //perror("Failed to execute script");
+                            char scriptname[10] = "script.sh";
+                            execlp("bash", "bash", scriptname, filename, NULL);
                             //printf "the stuff before"
                             exit(12);
                             
                         }
                     else
                     {
-                    /*pid_t pid_lines = fork();
-                    if (pid_lines < 0) 
-                    {
-                        perror("there is no process created");
-                        exit(999);
-                    }
-                    else if (pid_lines == 0) 
-                    {
-                        pid_count ++;
-                        // code for child process
-                        print_reg_file_info(filename);
-                        exit(11);
-                    }*/
-                        // parent process       
-                        // should use wait
-                        close(pipefd[1]); // close unused write end of the pipe
-                        char buffer[BUFFER_SIZE];
-                        // you can read 1 byte at a time 
-                        // !!!
-                        int nbytes = read(pipefd[0], buffer, BUFFER_SIZE);
-                        if (nbytes == -1)
-                        {
-                            perror("read");
-                            exit(1);
-                        }
-                        close(pipefd[0]); // close pipe read end
 
-                        buffer[nbytes] = '\0';
-                        int num_errors = 0, num_warnings = 0;
-                        char *token = strtok(buffer, "\n");
-                        while (token != NULL)
-                            {
-                                if (strstr(token, "error") != NULL)
-                                {
-                                    num_errors++;
-                                }
-                                else if (strstr(token, "warning") != NULL)
-                                {
-                                    num_warnings++;
-                                }
-                                token = strtok(NULL, "\n");
-                            }
-                        printf("Code score for %s: %d errors, %d warnings\n", filename, num_errors, num_warnings);
-                        token = NULL;
-                        
                         /*pid_t wpid;
                         int status;
                         for( int i = 0; i < pid_count; i++)
@@ -186,6 +144,25 @@ int main(int argc, char* argv[])
                                 }
 
                                 
+                        }*/
+
+                        /*pid_t wpid;
+                        int status;
+                        while ((wpid = wait(&status)) > 0)
+                        {
+                            if (wpid == pid_reg || wpid == pid_script)
+                            {
+                                if (WIFEXITED(status))
+                                {
+                                    printf("\n");
+                                    printf("Child process with PID %d exited with status %d\n", wpid, WEXITSTATUS(status));
+                                }
+                                else
+                                {
+                                    printf("\n");
+                                    printf("Child process with PID %d did not exit normally\n", wpid);
+                                }
+                            }
                         }*/
 
                         pid_t wpid;
@@ -207,14 +184,55 @@ int main(int argc, char* argv[])
                             }
                         }
 
+                        close(pipefd[1]); // close unused write end of the pipe
+                        char buffer[BUFFER_SIZE];
+                        int num_errors = 0, num_warnings = 0;
+
+                        while (1) 
+                        {
+                            char c;
+                            int nbytes = read(pipefd[0], &c, 1);
+                            if (nbytes == -1) 
+                            {
+                                perror("read");
+                                exit(88);
+                            }
+                            if (nbytes == 0) 
+                            {
+                                break;
+                            }
+                            if (c == '\n') 
+                            {
+                                buffer[nbytes] = '\0';
+                                if (strstr(buffer, "error") != NULL) 
+                                {
+                                    num_errors++;
+                                } 
+                                else if (strstr(buffer, "warning") != NULL) 
+                                {
+                                    num_warnings++;
+                                }
+                                printf("%s\n", buffer);
+                                nbytes = 0;
+                            } 
+                            else 
+                            {
+                                buffer[nbytes] = c;
+                                nbytes++;
+                            }
+                        }
+
+                    close(pipefd[0]); // close pipe read end
+                    printf("Code score for %s: %d errors, %d warnings\n", filename, num_errors, num_warnings);
+
                     }
                 }
+                break;
             }
-            break;
 
             case S_IFLNK:
             {
-                printf("%s: directory\n", filename);
+                printf("%s: symbolic link:\n", filename);
                 pid_t pid_link = fork();
                 if (pid_link < 0)
                 {

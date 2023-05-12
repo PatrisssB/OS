@@ -44,6 +44,7 @@ int count_lines(char* filename)
 int main(int argc, char* argv[]) 
 {
     int i;
+    int fp = open("grades.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR);
     for (i = 1; i < argc; i++) 
     {
         char* filename = argv[i];
@@ -63,6 +64,7 @@ int main(int argc, char* argv[])
             // -add the count_line in the pid_reg == 0
             // modify small amounts of code during the script 
             case S_IFREG:
+            {
                 // here should be implemented the process part for regular files
                 printf("%s: regular file\n", filename);
                 int pid_count = 0;
@@ -73,9 +75,9 @@ int main(int argc, char* argv[])
                     perror("there is no process created");
                     exit(999); 
                 }
-                //try pid count here
-                pid_count ++;
-                if( pid_reg == 0) 
+
+                //pid_count ++;
+                else if( pid_reg == 0) 
                 {
                     print_reg_file_info(filename);
                     int lines = count_lines(filename);
@@ -87,24 +89,25 @@ int main(int argc, char* argv[])
                 }
                 else
                 {
-                    // code executed by the parent
-                    if(filename[strlen(filename)-1]=='c' && filename[strlen(filename)-2]=='.')
+                    pid_count++;
+                    int pipefd[2];
+                    if (pipe(pipefd) == -1)
                     {
-                        int pipefd[2];
-                        if (pipe(pipefd) == -1)
-                        {
-                            perror("pipe");
-                            exit(1);
-                        }
-                        
-                        pid_t pid_script = fork();
-                        if (pid_script < 0 )
-                        {
-                            perror("there is no process created");
-                            exit(999);
-                        }
-                        pid_count++;
-                        if ( pid_script == 0)
+                        perror("pipe");
+                        exit(1);
+                    }
+
+                    pid_t pid_script = fork();
+                    if (pid_script < 0 )
+                    {
+                        perror("there is no process created");
+                        exit(999);
+                    }
+                    //pid_count++;
+                    else if ( pid_script == 0)
+                    {
+                        //pid_count++;
+                        if(filename[strlen(filename)-1]=='c' && filename[strlen(filename)-2]=='.')
                         {
                             //pid_count++;
                             // here we should call the script and run it 
@@ -122,12 +125,19 @@ int main(int argc, char* argv[])
                             execlp("bash", "bash", scriptname, filename, NULL);
                             //printf "the stuff before"
                             exit(12);
-                            
                         }
+                        else
+                        {
+                            count_lines(filename);
+                            exit(13);
+                        }
+                         //child process finish here  
+                    }
                     else
                     {
-
-                        /*pid_t wpid;
+                        pid_count++;
+                        //printf("count %d",pid_count);
+                        pid_t wpid;
                         int status;
                         for( int i = 0; i < pid_count; i++)
                         {
@@ -141,90 +151,43 @@ int main(int argc, char* argv[])
                                 {
                                     printf("\n");
                                     printf("Child process  with PID %d did not exit normally\n", wpid);
-                                }
-
-                                
-                        }*/
-
-                        /*pid_t wpid;
-                        int status;
-                        while ((wpid = wait(&status)) > 0)
-                        {
-                            if (wpid == pid_reg || wpid == pid_script)
-                            {
-                                if (WIFEXITED(status))
-                                {
-                                    printf("\n");
-                                    printf("Child process with PID %d exited with status %d\n", wpid, WEXITSTATUS(status));
-                                }
-                                else
-                                {
-                                    printf("\n");
-                                    printf("Child process with PID %d did not exit normally\n", wpid);
-                                }
-                            }
-                        }*/
-
-                        pid_t wpid;
-                        int status;
-                        while ((wpid = wait(&status)) > 0)
-                        {
-                            if (wpid == pid_reg || wpid == pid_script)
-                            {
-                                if (WIFEXITED(status))
-                                {
-                                    printf("\n");
-                                    printf("Child process with PID %d exited with status %d\n", wpid, WEXITSTATUS(status));
-                                }
-                                else
-                                {
-                                    printf("\n");
-                                    printf("Child process with PID %d did not exit normally\n", wpid);
-                                }
-                            }
+                                }     
                         }
 
+                        
                         close(pipefd[1]); // close unused write end of the pipe
                         char buffer[BUFFER_SIZE];
-                        int num_errors = 0, num_warnings = 0;
+                        //int num_errors = 0, num_warnings = 0;
 
-                        while (1) 
+                        int i;
+                        for(i = 0; i <= 1; i++) 
                         {
                             char c;
-                            int nbytes = read(pipefd[0], &c, 1);
-                            if (nbytes == -1) 
-                            {
-                                perror("read");
-                                exit(88);
-                            }
-                            if (nbytes == 0) 
-                            {
-                                break;
-                            }
-                            if (c == '\n') 
-                            {
-                                buffer[nbytes] = '\0';
-                                if (strstr(buffer, "error") != NULL) 
-                                {
-                                    num_errors++;
-                                } 
-                                else if (strstr(buffer, "warning") != NULL) 
-                                {
-                                    num_warnings++;
-                                }
-                                printf("%s\n", buffer);
-                                nbytes = 0;
-                            } 
-                            else 
-                            {
-                                buffer[nbytes] = c;
-                                nbytes++;
-                            }
+                            read(pipefd[0], &c, 1);
+                            buffer[i] = c;
+
                         }
+                        buffer[i] = '\0';
+                        //printf("%s\n", buffer);
+                        int nr = atoi(buffer);
+                        int nr_errors = nr / 10;
+                        int nr_warnings = nr % 10;
+                        int grade;
+                        if (nr_errors == 0 && nr_warnings == 0)
+                                grade = 10;
+                        else if (nr_errors == 0 && nr_warnings > 10)
+                                grade = 2;
+                        else if (nr_errors == 0 && nr_warnings < 10)
+                                grade = 2 + 8 * (10 - nr_warnings) / 10;
+                        else if (nr_errors > 0)
+                                grade = 1;
 
                     close(pipefd[0]); // close pipe read end
-                    printf("Code score for %s: %d errors, %d warnings\n", filename, num_errors, num_warnings);
-
+                    printf("Code score for %s: %d errors, %d warnings\n", filename, nr_errors, nr_warnings);
+                    char gradeString[100];
+                    sprintf(gradeString, "Grade for file %s is: %d\n", filename, grade);
+                    strcat(gradeString, "\0");
+                    write(fp, gradeString, strlen(gradeString));
                     }
                 }
                 break;
@@ -309,9 +272,9 @@ int main(int argc, char* argv[])
                         //execlp("touch", "touch", "/path/to/directory/newfile.txt", NULL);-
                         //execlp("touch", "touch", "/mnt/c/Users/triss/Desktop/os_project/dir1/new_file.c", NULL);
                         char *cmd = "touch";
-                        char filename[strlen(argv[1]) + 11];
-                        sprintf(filename, "%s/%s_file.txt", argv[1], argv[1]);
-                        execlp(cmd, cmd, filename, (char *) NULL);
+                        char name[strlen(argv[1]) + 11];
+                        sprintf(name, "%s/%s_file.txt", filename, filename);
+                        execlp(cmd, cmd, name, (char *) NULL);
                         exit(31);
                         //the process stops when i introduce the option -c
                     }

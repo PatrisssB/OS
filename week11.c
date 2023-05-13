@@ -45,6 +45,7 @@ int main(int argc, char* argv[])
 {
     int i;
     int fp = open("grades.txt", O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR);
+
     for (i = 1; i < argc; i++) 
     {
         char* filename = argv[i];
@@ -58,15 +59,9 @@ int main(int argc, char* argv[])
         
         switch (st.st_mode & S_IFMT) 
         {
-            // !
-            // what you need to do for IF_REG: 
-            // -try pid_count in other places
-            // -add the count_line in the pid_reg == 0
-            // modify small amounts of code during the script 
             case S_IFREG:
             {
-                // here should be implemented the process part for regular files
-                printf("%s: regular file\n", filename);
+                printf("%s: the regular file\n", filename);
                 int pid_count = 0;
                 //we fork the process to create a child process
                 pid_t pid_reg = fork();
